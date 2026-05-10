@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 必須要有這行，GitHub 才會讓你存檔
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,12 +31,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add transcripts/*.md
-          # 檢查是否有檔案產生，有的話才 Push
+          git add -A
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "Add new transcript $(date)"
             git push origin main
           else
-            echo "No new files found."
-            exit 1 # 如果沒檔案就報錯，不讓你看到虛假的綠燈
+            echo "No changes detected."
           fi
