@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          pip install -U yt-dlp openai-whisper torch 
+          pip install feedparser requests openai-whisper torch
 
       - name: Run script
         run: python main.py
