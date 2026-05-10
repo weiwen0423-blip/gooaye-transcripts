@@ -1,18 +1,15 @@
 name: Daily Gooaye Transcript
 
 on:
+  workflow_dispatch:
   schedule:
-    # 台灣時間每天晚上 21:00 跑一次 (UTC 13:00)
     - cron: '0 13 * * *'
-  workflow_dispatch: # 保留手動執行的按鈕
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 增加權限確保可以把檔案寫回倉庫
     permissions:
-      contents: write
-      
+      contents: write  # 強制開啟寫入權限
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,7 +31,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add transcripts/
-          # 如果沒有新檔案要提交，就略過不報錯
-          git commit -m "Auto add new transcript: $(date +'%Y-%m-%d')" || exit 0
-          git push
+          mkdir -p transcripts  # 雙重保險建立資料夾
+          git add -A            # 強制追蹤所有新產生的檔案
+          git commit -m "Auto update transcript" || echo "No changes to commit"
+          git push origin main
