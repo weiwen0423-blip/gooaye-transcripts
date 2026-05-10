@@ -32,9 +32,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "Add new transcript $(date)"
-            git push origin main
-          else
-            echo "No changes detected."
-          fi
+          # 強迫提交，就算沒有變動也不要報錯
+          git commit -m "Auto update: $(date)" || echo "No changes"
+          git push origin main
