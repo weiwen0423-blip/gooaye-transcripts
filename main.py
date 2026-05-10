@@ -4,38 +4,43 @@ import os
 import datetime
 
 def run():
+    # 直接從 Firstory 抓音檔
     rss_url = "https://open.firstory.me/rss/user/ck9v6941v8d7y0873as9967l8"
-    print("正在獲取最新集數...")
+    print("正在強制獲取資料...")
     resp = requests.get(rss_url, timeout=30)
     content = resp.text
 
-    try:
-        audio_url = content.split('url="')[1].split('"')[0]
-        today = datetime.date.today().strftime("%Y%m%d")
-        title = f"Gooaye_{today}"
-    except Exception as e:
-        print(f"失敗: {e}")
-        return
-
-    # 使用絕對路徑確保沒人搞丟
-    current_dir = os.getcwd()
-    save_dir = os.path.join(current_dir, "transcripts")
-    os.makedirs(save_dir, exist_ok=True)
+    # 提取最新的 mp3
+    audio_url = content.split('url="')[1].split('"')[0]
     
-    print(f"下載中...")
+    # 這裡我們用「精確到秒」的時間命名，確保檔案一定跟上次不同，一定會被 Git 抓到
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    title = f"Gooaye_Full_Transcript_{now}"
+
+    os.makedirs("transcripts", exist_ok=True)
+    
+    print(f"下載音檔: {audio_url}")
     audio_data = requests.get(audio_url).content
     with open("temp.mp3", "wb") as f:
         f.write(audio_data)
     
-    print("辨識中 (Whisper)...")
+    print("啟動 AI 辨識 (Whisper Base)... 這步最耗時...")
     model = whisper.load_model("base")
-    result = model.transcribe("temp.mp3", initial_prompt="股癌投資分析", fp16=False)
+    result = model.transcribe("temp.mp3", initial_prompt="股癌,台股,美股,基本面,產業研究", fp16=False)
     
-    file_path = os.path.join(save_dir, f"{title}.md")
+    # 寫入 Markdown
+    file_path = os.path.join("transcripts", f"{title}.md")
     with open(file_path, "w", encoding="utf-8") as f:
-        f.write(f"# {title}\n\n{result['text']}")
+        f.write(f"# {title}\n\n")
+        f.write(f"生成時間: {now}\n\n")
+        f.write(result["text"])
     
-    print(f"確認產出檔案於: {file_path}")
+    # 【關鍵檢查】
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 100:
+        print(f"--- 成功！檔案大小 {os.path.getsize(file_path)} bytes ---")
+    else:
+        raise Exception("檔案產生失敗或內容為空！")
+
     if os.path.exists("temp.mp3"):
         os.remove("temp.mp3")
 
