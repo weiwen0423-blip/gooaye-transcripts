@@ -31,6 +31,14 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add transcripts/
-          git commit -m "Auto update: $(date)" || exit 0
-          git push origin main
+          # 暴力解法：直接建立資料夾並在裡面放一個防空檔，確保 Git 一定抓得到路徑
+          mkdir -p transcripts
+          touch transcripts/.gitkeep
+          git add -A
+          # 檢查是否有變動，有的話才 commit
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Auto update transcript: $(date +'%Y-%m-%d')"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
