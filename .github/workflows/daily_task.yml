@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 強制開啟寫入權限
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          pip install feedparser requests openai-whisper torch
+          pip install -U yt-dlp openai-whisper torch 
 
       - name: Run script
         run: python main.py
@@ -31,7 +31,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          mkdir -p transcripts  # 雙重保險建立資料夾
-          git add -A            # 強制追蹤所有新產生的檔案
-          git commit -m "Auto update transcript" || echo "No changes to commit"
+          git add transcripts/
+          git commit -m "Auto update: $(date)" || exit 0
           git push origin main
