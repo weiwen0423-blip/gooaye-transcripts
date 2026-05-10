@@ -1,52 +1,49 @@
-import yt_dlp
+import requests
+import feedparser
 import whisper
 import os
 import re
 
 def run():
-    # 股癌 YouTube 頻道影片列表
-    url = "https://www.youtube.com/@Gooaye/videos"
+    # 這是 Megaphone 的直接 RSS，最穩定且不擋機器人
+    url = "https://feeds.megaphone.fm/WWO8022634352"
     
-    # 專門為了繞過機器人檢查的設定
-    ydl_opts = {
-        'format': 'm4a/bestaudio/best',
-        'noplaylist': True,
-        'playlist_items': '1', # 只抓最新一集
-        'nocheckcertificate': True,
-        'quiet': True,
-        'no_warnings': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    }
+    # 偽裝成一般的播放器 (如同 Apple Podcast App)
+    headers = {'User-Agent': 'Podcast/1.0'}
+    
+    print("正在獲取最新集數資訊...")
+    resp = requests.get(url, headers=headers)
+    feed = feedparser.parse(resp.content)
+    
+    if not feed.entries:
+        raise Exception("無法讀取集數資訊，請檢查連結")
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print("正在獲取 YouTube 最新影片資訊...")
-            info = ydl.extract_info(url, download=True)
-            entry = info['entries'][0]
-            title = entry['title']
-            audio_file = ydl.prepare_filename(entry)
-
-        # 整理標題
-        clean_title = re.sub(r'[^\w\u4e00-\u9fff]', '_', title)
-        os.makedirs("transcripts", exist_ok=True)
-        
-        print(f"辨識中: {title}")
-        model = whisper.load_model("base")
-        # 這裡加入你最關心的基本面關鍵字，強化 AI 辨識準度
-        result = model.transcribe(audio_file, initial_prompt="股癌,台股,美股,半導體,CoWoS,供應鏈,投資標的", fp16=False)
-        
-        file_path = f"transcripts/{clean_title}.md"
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(f"# {title}\n\n")
-            f.write(result["text"])
-        
-        print(f"成功！已產生: {file_path}")
-        if os.path.exists(audio_file):
-            os.remove(audio_file)
-
-    except Exception as e:
-        print(f"失敗原因: {e}")
-        raise e
+    item = feed.entries[0]
+    title = item.title
+    audio_url = item.enclosures[0].href
+    
+    # 檔名純化，只留中英文字
+    clean_title = re.sub(r'[^\w\u4e00-\u9fff]', '_', title)
+    os.makedirs("transcripts", exist_ok=True)
+    
+    print(f"下載中: {title}")
+    audio_data = requests.get(audio_url, headers=headers).content
+    with open("temp.mp3", "wb") as f:
+        f.write(audio_data)
+    
+    print("AI 轉錄中 (使用 Whisper Base)...")
+    model = whisper.load_model("base")
+    # 加入你最在意的投資標的關鍵字，讓 AI 辨識更準
+    result = model.transcribe("temp.mp3", initial_prompt="股癌,台股,美股,半導體,CoWoS,供應鏈,投資標的,主委", fp16=False)
+    
+    file_path = f"transcripts/{clean_title}.md"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(f"# {title}\n\n")
+        f.write(result["text"])
+    
+    print(f"成功！檔案已產出: {file_path}")
+    if os.path.exists("temp.mp3"):
+        os.remove("temp.mp3")
 
 if __name__ == "__main__":
     run()
