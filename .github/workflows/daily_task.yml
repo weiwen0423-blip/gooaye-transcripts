@@ -1,12 +1,18 @@
 name: Daily Gooaye Transcript
+
 on:
   schedule:
-    - cron: '0 10 * * *' # 每天 UTC 10:00 (台灣時間 18:00) 執行
-  workflow_dispatch: # 也可以手動點擊執行
+    # 台灣時間每天晚上 21:00 跑一次 (UTC 13:00)
+    - cron: '0 13 * * *'
+  workflow_dispatch: # 保留手動執行的按鈕
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 增加權限確保可以把檔案寫回倉庫
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -14,20 +20,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          pip install yt-dlp openai-whisper torch
+          pip install feedparser requests openai-whisper torch
 
       - name: Run script
         run: python main.py
 
-      - name: Commit results
+      - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add transcripts/
-          git commit -m "Add new transcript" || exit 0
+          # 如果沒有新檔案要提交，就略過不報錯
+          git commit -m "Auto add new transcript: $(date +'%Y-%m-%d')" || exit 0
           git push
